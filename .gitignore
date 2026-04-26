@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+uploads/
+separated/
+audio/
+.claude/

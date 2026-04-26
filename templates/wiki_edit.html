@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}BeatForge - {{ title|default('新建页面') }}{% endblock %}
+{% block head_extra %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<style>
+  .edit-header { margin-bottom: 20px; }
+  .edit-header h1 { font-size: 24px; font-weight: 700; margin-bottom: 4px; }
+  .edit-header .hint { font-size: 13px; color: #999; }
+  .edit-layout { display: flex; gap: 16px; min-height: 500px; }
+  .edit-pane { flex: 1; display: flex; flex-direction: column; }
+  .edit-pane label { font-size: 13px; font-weight: 600; color: #666; margin-bottom: 8px; }
+  .edit-pane textarea {
+    flex: 1; padding: 16px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 14px; font-family: "SF Mono", Consolas, monospace; line-height: 1.6;
+    resize: vertical; outline: none;
+  }
+  .edit-pane textarea:focus { border-color: #667eea; }
+  .preview-pane { flex: 1; display: flex; flex-direction: column; }
+  .preview-pane label { font-size: 13px; font-weight: 600; color: #666; margin-bottom: 8px; }
+  .preview-box {
+    flex: 1; padding: 16px; border: 1px solid #eee; border-radius: 8px;
+    background: #fff; overflow-y: auto; line-height: 1.8; font-size: 14px;
+  }
+  .preview-box h1 { font-size: 22px; margin: 16px 0 8px; }
+  .preview-box h2 { font-size: 18px; margin: 12px 0 6px; }
+  .preview-box h3 { font-size: 16px; margin: 10px 0 4px; }
+  .preview-box ul, .preview-box ol { padding-left: 20px; }
+  .preview-box code { background: #f5f5f5; padding: 1px 4px; border-radius: 3px; }
+  .preview-box pre { background: #f5f5f5; padding: 12px; border-radius: 6px; overflow-x: auto; }
+  .preview-box a { color: #667eea; }
+  .preview-box blockquote { border-left: 3px solid #667eea; padding: 4px 12px; margin: 8px 0; background: #f8f9ff; }
+  .preview-box table { border-collapse: collapse; width: 100%; }
+  .preview-box th, .preview-box td { border: 1px solid #e0e0e0; padding: 6px 10px; }
+  .preview-box th { background: #f5f5f5; }
+  .preview-box hr { border: none; border-top: 1px solid #eee; margin: 16px 0; }
+  .edit-actions { display: flex; gap: 10px; margin-top: 16px; }
+  .btn-save {
+    padding: 10px 28px; border: none; border-radius: 8px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+    transition: all .15s;
+  }
+  .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,.3); }
+  .btn-cancel {
+    padding: 10px 20px; border: 1px solid #ddd; border-radius: 8px;
+    font-size: 15px; font-weight: 600; cursor: pointer;
+    background: #fff; color: #666; text-decoration: none;
+    display: inline-flex; align-items: center;
+  }
+  .btn-cancel:hover { background: #f5f5f5; }
+  .status-msg {
+    padding: 10px 16px; border-radius: 6px; margin-bottom: 16px;
+    font-size: 14px; display: none;
+  }
+  .status-msg.success { display: block; background: #f6ffed; border: 1px solid #b7eb8f; color: #52c41a; }
+  .status-msg.error { display: block; background: #fff2f0; border: 1px solid #ffccc7; color: #f5222d; }
+  @media (max-width: 700px) {
+    .edit-layout { flex-direction: column; min-height: auto; }
+    .edit-pane textarea { min-height: 300px; }
+    .preview-pane { min-height: 200px; }
+  }
+</style>
+{% endblock %}
+{% block content %}
+<div class="edit-header">
+  <h1>{{ title|default('新建页面') }}</h1>
+  <div class="hint">支持 Markdown 语法，右侧实时预览</div>
+</div>
+<div class="status-msg" id="status-msg"></div>
+<form id="edit-form" method="POST">
+<div class="edit-layout">
+  <div class="edit-pane">
+    <label for="editor">编辑</label>
+    <textarea id="editor" name="content" placeholder="在此输入 Markdown 内容...">{{ content }}</textarea>
+  </div>
+  <div class="preview-pane">
+    <label>预览</label>
+    <div class="preview-box" id="preview"></div>
+  </div>
+</div>
+</form>
+<div class="edit-actions">
+  <button class="btn-save" id="save-btn">保存</button>
+  <a href="/wiki/{{ page_name }}" class="btn-cancel">取消</a>
+</div>
+<script>
+  const editor = document.getElementById('editor');
+  const preview = document.getElementById('preview');
+  const saveBtn = document.getElementById('save-btn');
+  const statusMsg = document.getElementById('status-msg');
+  const pageName = '{{ page_name }}';
+
+  function updatePreview() {
+    if (typeof marked !== 'undefined') {
+      marked.setOptions({ gfm: true });
+      preview.innerHTML = marked.parse(editor.value || '*暂无内容*');
+    }
+  }
+  editor.addEventListener('input', updatePreview);
+  updatePreview();
+
+  saveBtn.addEventListener('click', async function() {
+    const content = editor.value;
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
+    statusMsg.className = 'status-msg';
+    statusMsg.style.display = 'none';
+    try {
+      const resp = await fetch('/api/wiki/' + encodeURIComponent(pageName), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: content }),
+      });
+      const data = await resp.json();
+      if (data.error) {
+        statusMsg.className = 'status-msg error';
+        statusMsg.textContent = '保存失败: ' + data.error;
+      } else {
+        statusMsg.className = 'status-msg success';
+        statusMsg.textContent = '保存成功！';
+        setTimeout(() => { window.location.href = '/wiki/' + encodeURIComponent(pageName); }, 600);
+      }
+    } catch (err) {
+      statusMsg.className = 'status-msg error';
+      statusMsg.textContent = '网络错误: ' + err.message;
+    }
+    statusMsg.style.display = 'block';
+    saveBtn.disabled = false;
+    saveBtn.textContent = '保存';
+  });
+
+  // Ctrl+S shortcut
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      saveBtn.click();
+    }
+  });
+</script>
+{% endblock %}

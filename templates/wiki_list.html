@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}BeatForge - Wiki{% endblock %}
+{% block head_extra %}
+<style>
+  .wiki-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .wiki-header h1 { font-size: 24px; font-weight: 700; color: #333; }
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 20px; border: none; border-radius: 8px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+    background: linear-gradient(135deg, #667eea, #764ba2); color: #fff;
+    text-decoration: none; transition: all .15s;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(102,126,234,.3); }
+  .wiki-grid { display: grid; gap: 12px; }
+  .wiki-card {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #fff; border-radius: 10px; padding: 18px 20px;
+    text-decoration: none; color: #333; transition: all .15s;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .wiki-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.1); }
+  .wiki-card .name { font-size: 16px; font-weight: 600; }
+  .wiki-card .meta { font-size: 13px; color: #999; }
+  .empty { text-align: center; color: #bbb; padding: 60px 0; font-size: 15px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="wiki-header">
+  <h1>Wiki</h1>
+  <a href="/wiki/_new" class="btn-primary">+ 新建页面</a>
+</div>
+<div class="wiki-grid">
+  {% if pages %}
+    {% for page in pages %}
+    <a href="/wiki/{{ page.name | urlencode }}" class="wiki-card">
+      <div>
+        <div class="name">{{ page.title }}</div>
+        <div class="meta">{{ page.name }}</div>
+      </div>
+      <div style="font-size:13px;color:#999;">{{ page.updated }}</div>
+    </a>
+    {% endfor %}
+  {% else %}
+    <div class="empty">暂无页面，点击右上角创建第一个 Wiki 页面</div>
+  {% endif %}
+</div>
+{% endblock %}
